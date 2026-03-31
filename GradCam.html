@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FractureVision AI - Grad-CAM Analysis</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Styles from front.html (Header/Footer Theme) --- */
+        :root {
+            --fv-primary: #2E5BFF;
+            --fv-accent: #FFB020;
+            --fv-bg-ice: #F8FAFC;
+        }
+
+        body {
+            /* Default to Jakarta for the shell, Inter for the app content */
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--fv-bg-ice);
+            overflow-x: hidden;
+        }
+
+        /* Ambient background glows for Header area */
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(46, 91, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- Styles from MediScan (Body Content) --- */
+        /* We scope these to ensure they don't break Tailwind or vice versa */
+        
+        .grad-cam-wrapper {
+            font-family: 'Inter', sans-serif;
+            color: #1F2937;
+            --primary: #1E88E5; /* Keep the Medical Blue for the tools */
+            --primary-hover: #1565C0;
+            --secondary: #0D47A1;
+            --dark-bg: #111827; 
+            --light-bg: #F9FAFB;
+            --white: #FFFFFF;
+            --text-main: #1F2937;
+            --text-light: #6B7280;
+            --accent-red: #EF4444;
+            --accent-indigo: #4F46E5;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .grad-cam-wrapper a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .grad-cam-wrapper ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .custom-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .custom-btn {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            line-height: 1.5;
+        }
+
+        .custom-btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .custom-btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+        }
+
+        .custom-btn-white {
+            background-color: var(--white);
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .custom-btn-white:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            padding: 80px 0;
+            background: linear-gradient(to bottom, #FFFFFF, #F3F7FF);
+            position: relative;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            margin-bottom: 24px;
+            color: #111827;
+        }
+
+        .hero-content h1 span {
+            color: var(--primary);
+        }
+
+        .hero-content p {
+            font-size: 1.125rem;
+            color: var(--text-light);
+            margin-bottom: 32px;
+            max-width: 500px;
+        }
+
+        .hero-image-container {
+            position: relative;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            aspect-ratio: 4/3;
+        }
+
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            transition: opacity 0.5s ease;
+        }
+
+        .heatmap-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 60% 60%, rgba(255, 0, 0, 0.5), transparent 30%),
+                        radial-gradient(circle at 40% 40%, rgba(255, 255, 0, 0.3), transparent 30%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            mix-blend-mode: color-dodge;
+        }
+        
+        .hero-image-container.active .heatmap-overlay {
+            opacity: 1;
+        }
+
+        .toggle-heatmap-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.4);
+            z-index: 10;
+            transition: transform 0.2s;
+        }
+
+        .toggle-heatmap-btn:hover {
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        /* --- Timeline Section (Process) --- */
+        .process {
+            padding: 100px 0;
+            background-color: #F8FAFC;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-tag {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #111827;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            max-width: 700px;
+            margin: 0 auto;
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+
+        .timeline {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Vertical Line */
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 3px;
+            background: var(--primary);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .timeline-content {
+            width: 45%;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            transition: transform 0.3s;
+        }
+        
+        .timeline-content:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Alternating Layout */
+        .timeline-item:nth-child(odd) {
+            flex-direction: row-reverse;
+        }
+        
+        .timeline-item:nth-child(odd) .timeline-content {
+            margin-right: auto; /* Push to Left */
+        }
+        
+        .timeline-item:nth-child(even) .timeline-content {
+            margin-left: auto; /* Push to Right */
+        }
+
+        /* Timeline Icons */
+        .timeline-icon {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            z-index: 2;
+            border: 4px solid #F8FAFC;
+        }
+
+        .icon-blue { background: var(--primary); }
+        .icon-cyan { background: #0EA5E9; }
+        .icon-indigo { background: var(--accent-indigo); }
+        .icon-red { background: var(--accent-red); }
+
+        .timeline-content h3 {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .timeline-content p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        /* --- Interactive Slider Section --- */
+        .comparison-section {
+            padding: 100px 0;
+            background: white;
+        }
+
+        .sliders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .slider-wrapper {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .img-comp-container {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .img-comp-img {
+            position: absolute;
+            width: auto;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .img-comp-img img {
+            display: block;
+            height: 100%;
+            width: auto; 
+            min-width: 100%;
+            object-fit: cover;
+        }
+
+        .slider-labels {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .label {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .label.grad { background: var(--primary); }
+
+        .img-comp-slider {
+            position: absolute;
+            z-index: 9;
+            cursor: ew-resize;
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            opacity: 1;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        /* Using FontAwesome unicode for arrows */
+        .img-comp-slider::before {
+            content: '\f337'; 
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--primary);
+        }
+        
+        .slider-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: white;
+            z-index: 8;
+            pointer-events: none;
+        }
+
+        .slider-desc {
+            margin-top: 20px;
+        }
+
+        .slider-desc h4 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .slider-desc p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        /* --- Internal CTA (Dark) --- */
+        .footer-cta {
+            background-color: var(--dark-bg);
+            color: white;
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .footer-cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+
+        .footer-cta p {
+            color: #9CA3AF;
+            max-width: 600px;
+            margin: 0 auto 40px;
+            font-size: 1.1rem;
+        }
+
+        /* --- Responsive Tweaks for Body Content --- */
+        @media (max-width: 768px) {
+            .hero-grid, .sliders-grid { grid-template-columns: 1fr; }
+            
+            .timeline::before { left: 30px; }
+            .timeline-item { flex-direction: column !important; align-items: flex-start; margin-left: 60px; }
+            .timeline-content { width: 100%; margin: 0 !important; }
+            .timeline-icon { left: 30px; transform: translate(-50%, -50%); }
+            
+            .hero-content h1 { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow top-[-100px] left-[-100px]"></div>
+    <div class="glow bottom-[10%]" style="right: -100px; background: radial-gradient(circle, rgba(255, 176, 32, 0.05) 0%, transparent 70%);"></div>
+    
+    <nav class="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/50 transition-all">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i data-lucide="scan-eye" class="w-6 h-6"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight text-slate-800"><a href="Index.html">FractureVision</a><span class="text-blue-600">AI</span></span>
+            </div>
+
+            <div class="hidden md:flex items-center gap-10 text-[15px] font-semibold text-slate-500">
+                <a href="Index.html" class="hover:text-blue-600 transition">Home</a>
+                <a href="About.html" class="hover:text-blue-600 transition">About</a>
+                <a href="Feature.html" class="hover:text-blue-600 transition">Features</a>
+                <a href="Detect_Complete_Enhanced.html" class="hover:text-blue-600 transition">Detect</a>
+                <a href="GradCam.html" class="text-blue-600 transition">Grad CAM</a>
+                <a href="Contact.html" class="hover:text-blue-600 transition">Contact</a>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button class="px-5 py-2.5 text-slate-600 font-semibold hover:text-blue-600 transition"><a href="Contact.html">Portal</a></button>
+                <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-slate-800 transition shadow-xl shadow-slate-200">
+                    <a href="Detect_Complete_Enhanced.html">Try it now</a>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="grad-cam-wrapper" style="padding-top: 75px;">
+        
+        <section class="hero">
+            <div class="custom-container hero-grid">
+                <div class="hero-content">
+                    <h1>Visualizing <br><span>the Unseen</span></h1>
+                    <p>Grad-CAM technology makes AI-based fracture detection transparent by creating visual heatmaps that highlight exactly where our algorithm detects potential fractures in X-ray images.</p>
+                    <a href="Detect_Complete_Enhanced.html" class="custom-btn custom-btn-primary">
+                        <i class="fa-solid fa-eye" style="margin-right: 8px;"></i> Explore Technology
+                    </a>
+                </div>
+                
+                <div class="hero-image-container" id="heroImageContainer">
+                    <img src="hand_bo.jpg" alt="Xray" class="hero-img">
+                    <div class="heatmap-overlay"></div>
+                    <button class="toggle-heatmap-btn" onclick="toggleHeroHeatmap()">
+                        <i class="fa-solid fa-layer-group"></i> Toggle Heatmap View
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="process" id="process">
+            <div class="custom-container">
+                <div class="section-header">
+                    <span class="section-tag">Understanding AI Vision</span>
+                    <h2 class="section-title">What is Grad-CAM?</h2>
+                    <p class="section-desc">Gradient-weighted Class Activation Mapping (Grad-CAM) is a technique that produces visual explanations for decisions made by convolutional neural networks, making AI diagnosis transparent and interpretable.</p>
+                </div>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-icon icon-blue">
+                            <i class="fa-solid fa-upload"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h3>X-ray Analysis</h3>
+                            <p>The X-ray image is processed through multiple convolutional layers of our deep neural network, extracting key features and patterns that could indicate a fracture.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-icon icon-cyan">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h3>Feature Detection</h3>
+                            <p>Our AI identifies critical patterns and anomalies in bone structure that might indicate fractures or other abnormalities by comparing with thousands of training examples.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-icon icon-indigo">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h3>Gradient Calculation</h3>
+                            <p>Grad-CAM calculates the gradients flowing into the final convolutional layer to generate class-specific feature importance maps that highlight decision-making regions.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-icon icon-red">
+                            <i class="fa-solid fa-fire"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h3>Heatmap Generation</h3>
+                            <p>A color-coded visualization overlays the original X-ray, with red areas indicating regions most critical to the diagnosis. This creates a transparent window into the AI's decision process.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="comparison-section">
+            <div class="custom-container">
+                <div class="section-header">
+                    <span class="section-tag">Interactive Exploration</span>
+                    <h2 class="section-title">Compare X-rays with Grad-CAM</h2>
+                    <p class="section-desc">Slide to compare original X-ray images with their Grad-CAM visualizations and see how our AI identifies potential fracture sites.</p>
+                </div>
+
+                <div class="sliders-grid">
+                    
+                    <div>
+                        <div class="slider-wrapper">
+                            <div class="img-comp-container">
+                                <div class="img-comp-img">
+                                    <div style="position:relative; width: 600px; height: 100%;">
+                                        <img src="data_img.jpg" style="width:100%;">
+                                        <div style="position:absolute; top:40%; left:30%; width:100px; height:100px; background:rgba(255,0,0,0.4); box-shadow: 0 0 40px 20px rgba(255,0,0,0.4); border-radius:50%; mix-blend-mode:color-dodge;"></div>
+                                        <div style="position:absolute; top:35%; left:25%; border: 2px solid #00FF00; width: 140px; height: 140px;"></div>
+                                    </div>
+                                </div>
+                                <div class="img-comp-img img-comp-overlay">
+                                    <img src="data_img.jpg" alt="Hand Xray">
+                                </div>
+                                <div class="slider-labels">
+                                    <span class="label">Original</span>
+                                    <span class="label grad">Grad-CAM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slider-desc">
+                            <h4>Distal Radius Fracture</h4>
+                            <p>The heatmap clearly highlights the fracture line at the distal radius, an often subtle finding that can be challenging to detect in standard X-rays, especially for non-specialists.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="slider-wrapper">
+                            <div class="img-comp-container">
+                                 <div class="img-comp-img">
+                                    <div style="position:relative; width: 600px; height: 100%;">
+                                        <img src="data_im.jpg" style="width:100%;">
+                                        <div style="position:absolute; top:43%; left:55%; width:80px; height:150px; background:rgba(255,0,0,0.4); box-shadow: 0 0 40px 20px rgba(255,0,0,0.4); transform: rotate(20deg); mix-blend-mode:color-dodge;"></div>
+                                        <div style="position:absolute; top:43%; left:52%; border: 2px solid #00FF00; width: 100px; height: 200px; transform: rotate(20deg);"></div>
+                                    </div>
+                                </div>
+                                <div class="img-comp-img img-comp-overlay">
+                                    <img src="data_im.jpg" alt="Leg Xray">
+                                </div>
+                                <div class="slider-labels">
+                                    <span class="label">Original</span>
+                                    <span class="label grad">Grad-CAM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slider-desc">
+                            <h4>Lateral Malleolus Fracture</h4>
+                            <p>Grad-CAM visualization reveals a lateral malleolus fracture that might be overlooked due to complex overlapping structures in the ankle joint region.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section class="footer-cta">
+            <div class="custom-container">
+                <span class="section-tag">Future Developments</span>
+                <h2>Where We're Heading</h2>
+                <p>Our team is continuously working to advance Grad-CAM technology to provide even more accurate and detailed visualizations for medical professionals.</p>
+                <button class="custom-btn custom-btn-white">
+                    <i class="fa-solid fa-rocket" style="color:var(--primary); margin-right:5px;"></i> <a href="Detect_Complete_Enhanced.html">Try FractureVision AI</a>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <footer class="py-12 border-t border-slate-100 bg-white">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p class="text-slate-400 text-sm">© 2025 FractureVision AI. For clinical use by certified professionals.</p>
+            <div class="flex gap-8 text-sm font-bold text-slate-600">
+                <a href="#" class="hover:text-blue-600">Privacy</a>
+                <a href="#" class="hover:text-blue-600">Terms</a>
+                <a href="#" class="hover:text-blue-600">Contact Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons (For Header)
+        lucide.createIcons();
+
+        // Hero Section Heatmap Toggle
+        function toggleHeroHeatmap() {
+            const container = document.getElementById('heroImageContainer');
+            container.classList.toggle('active');
+        }
+
+        // Comparison Slider Logic
+        function initComparisons() {
+            var x, i;
+            x = document.getElementsByClassName("img-comp-overlay");
+            for (i = 0; i < x.length; i++) {
+                compareImages(x[i]);
+            }
+
+            function compareImages(img) {
+                var slider, clicked = 0, w, h;
+                w = img.offsetWidth;
+                h = img.offsetHeight;
+                img.style.width = (w / 2) + "px";
+                
+                slider = document.createElement("DIV");
+                slider.setAttribute("class", "img-comp-slider");
+                
+                let line = document.createElement("DIV");
+                line.setAttribute("class", "slider-line");
+
+                img.parentElement.insertBefore(slider, img);
+                img.parentElement.insertBefore(line, img);
+                
+                slider.style.top = (h / 2) + "px";
+                slider.style.left = (w / 2) + "px";
+                line.style.left = (w / 2) + "px";
+
+                slider.addEventListener("mousedown", slideReady);
+                window.addEventListener("mouseup", slideFinish);
+                slider.addEventListener("touchstart", slideReady);
+                window.addEventListener("touchend", slideFinish);
+
+                function slideReady(e) {
+                    e.preventDefault();
+                    clicked = 1;
+                    window.addEventListener("mousemove", slideMove);
+                    window.addEventListener("touchmove", slideMove);
+                }
+
+                function slideFinish() {
+                    clicked = 0;
+                }
+
+                function slideMove(e) {
+                    var pos;
+                    if (clicked == 0) return false;
+                    pos = getCursorPos(e);
+                    if (pos < 0) pos = 0;
+                    if (pos > w) pos = w;
+                    slide(pos);
+                }
+
+                function getCursorPos(e) {
+                    var a, x = 0;
+                    e = (e.changedTouches) ? e.changedTouches[0] : e;
+                    a = img.getBoundingClientRect();
+                    x = e.pageX - a.left;
+                    x = x - window.pageXOffset;
+                    return x;
+                }
+
+                function slide(x) {
+                    img.style.width = x + "px";
+                    slider.style.left = x + "px";
+                    line.style.left = x + "px";
+                }
+            }
+        }
+
+        window.addEventListener('load', initComparisons);
+        window.addEventListener('resize', () => {
+             // Logic to handle resize if necessary
+        });
+    </script>
+</body>
+</html>

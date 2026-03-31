@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FractureVision AI | Enhanced Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2E5BFF;
+            --accent: #FFB020;
+            --bg-ice: #F8FAFC;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-ice);
+            color: #1E293B;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(46, 91, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+        }
+        .drop-zone-active {
+            border-color: var(--primary) !important;
+            background: rgba(46, 91, 255, 0.05);
+            transform: scale(1.01);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #FFB020 0%, #F59E0B 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spinner {
+            border: 3px solid rgba(46, 91, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #2E5BFF;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            border-bottom-color: #2E5BFF;
+            color: #2E5BFF;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="glow top-[-100px] left-[-100px]"></div>
+    
+    <nav class="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-white/40 transition-all">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i data-lucide="scan-eye" class="w-6 h-6"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight text-slate-800"><a href="Index.html">FractureVision</a><span class="text-blue-600">AI</span></span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-10 text-[15px] font-semibold text-slate-500">
+                <a href="Index.html" class="hover:text-blue-600 transition">Home</a>
+                <a href="About.html" class="hover:text-blue-600 transition">About</a>
+                <a href="Feature.html" class="hover:text-blue-600 transition">Features</a>
+                <a href="Detect_Complete_Enhanced.html" class="text-blue-600 transition">Detect</a>
+                <a href="GradCam.html" class="hover:text-blue-600 transition">Grad CAM</a>
+                <a href="Contact.html" class="hover:text-blue-600 transition">Contact</a>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button class="px-5 py-2.5 text-slate-600 font-semibold hover:text-blue-600 transition"><a href="Contact.html">Portal</a></button>
+                <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-slate-800 transition shadow-xl shadow-slate-200">
+                    <a href="Detect_Complete_Enhanced.html">Try it now</a>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 flex flex-col items-center justify-center px-6 pb-12 pt-32">
+        <div class="max-w-7xl w-full">
+            
+            <div class="text-center mb-10">
+                <h2 class="text-4xl font-extrabold text-slate-900 mb-3">Enhanced Fracture Analysis</h2>
+                <p class="text-slate-500 text-lg">AI-powered detection with medical recommendations</p>
+            </div>
+
+            <div class="grid lg:grid-cols-5 gap-8">
+                
+                <!-- Upload Section -->
+                <div class="lg:col-span-2 glass-card rounded-[32px] p-2 overflow-hidden shadow-2xl h-fit">
+                    <div id="drop-zone" class="p-12 border-2 border-dashed border-slate-200 rounded-[28px] transition-all duration-300 bg-white/50">
+                        <input type="file" id="file-input" class="hidden" accept="image/*">
+                        
+                        <div id="upload-prompt">
+                            <div class="flex flex-col items-center py-10">
+                                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+                                    <i data-lucide="upload-cloud" class="w-10 h-10"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mb-2">Drag & drop X-ray</h3>
+                                <p class="text-slate-400 mb-8 text-center">PNG, JPEG up to 20MB</p>
+                                
+                                <button onclick="document.getElementById('file-input').click()" 
+                                    class="btn-primary text-white px-10 py-4 rounded-2xl font-bold shadow-lg shadow-orange-100 flex items-center gap-2">
+                                    Select File
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="preview-container" class="hidden">
+                            <div class="flex flex-col items-center">
+                                <div class="relative group mb-8">
+                                    <img id="image-preview" src="#" alt="X-ray Preview" class="max-h-[300px] w-auto rounded-2xl shadow-2xl border-4 border-white">
+                                    <button id="remove-btn" class="absolute -top-4 -right-4 bg-red-500 text-white rounded-full p-2 shadow-xl hover:bg-red-600 transition-colors border-2 border-white">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="w-full bg-white rounded-2xl p-6 border border-slate-100 shadow-sm mb-6">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex flex-col overflow-hidden">
+                                            <span id="file-name" class="font-bold text-slate-800 truncate text-sm">scan.jpg</span>
+                                            <span id="file-size" class="text-xs text-slate-400 font-medium">2.4 MB</span>
+                                        </div>
+                                        <div class="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Ready</div>
+                                    </div>
+                                </div>
+
+                                <button id="analyze-btn" class="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3">
+                                    <i data-lucide="zap" class="w-5 h-5 text-blue-400"></i>
+                                    Run Analysis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50/50 px-8 py-4 flex items-center justify-between border-t border-slate-100/50">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-500"></i> Encrypted
+                            </div>
+                        </div>
+                        <div class="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span class="text-slate-400">Status:</span>
+                            <span id="system-status" class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                                <span class="text-gray-500 text-xs">Checking...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results-container" class="lg:col-span-3 glass-card rounded-[32px] p-8 shadow-2xl hidden fade-in overflow-y-auto max-h-[calc(100vh-200px)]">
+                    
+                    <!-- Loading State -->
+                    <div id="loading-state">
+                        <div class="flex flex-col items-center justify-center py-16">
+                            <div class="spinner mb-4"></div>
+                            <p class="text-slate-600 font-semibold">Analyzing X-ray...</p>
+                            <p class="text-slate-400 text-sm mt-2">Running AI models</p>
+                        </div>
+                    </div>
+
+                    <!-- Result Display -->
+                    <div id="result-display" class="hidden">
+                        
+                        <!-- Verdict Card -->
+                        <div id="verdict-card" class="p-6 rounded-2xl mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 class="text-lg font-bold text-white mb-1">Diagnosis</h4>
+                                    <p id="fracture-type-name" class="text-white/90 text-sm font-semibold"></p>
+                                </div>
+                                <div id="confidence-badge" class="px-4 py-2 bg-white/20 rounded-full text-sm font-bold text-white"></div>
+                            </div>
+                            <p id="verdict-text" class="text-3xl font-extrabold text-white mb-2"></p>
+                            <p id="verdict-subtitle" class="text-white/80 text-sm"></p>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="border-b border-slate-200 mb-6">
+                            <div class="flex gap-4">
+                                <button class="tab-button active" onclick="switchTab('images')">
+                                    <i data-lucide="image" class="w-4 h-4 inline mr-2"></i>Images
+                                </button>
+                                <button class="tab-button" onclick="switchTab('medical')">
+                                    <i data-lucide="stethoscope" class="w-4 h-4 inline mr-2"></i>Medical Info
+                                </button>
+                                <button class="tab-button" onclick="switchTab('details')">
+                                    <i data-lucide="info" class="w-4 h-4 inline mr-2"></i>Details
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tab Content -->
+                        <div id="tab-content">
+                            
+                            <!-- Images Tab -->
+                            <div id="images-tab" class="tab-pane">
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Annotated Image</h4>
+                                        <div class="rounded-2xl overflow-hidden border-4 border-white shadow-lg">
+                                            <img id="annotated-image" src="#" alt="Annotated" class="w-full h-auto">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">GradCAM Heatmap</h4>
+                                        <div class="rounded-2xl overflow-hidden border-4 border-white shadow-lg">
+                                            <img id="gradcam-image" src="#" alt="GradCAM" class="w-full h-auto">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Medical Info Tab -->
+                            <div id="medical-tab" class="tab-pane hidden">
+                                <div class="space-y-6">
+                                    
+                                    <!-- Immediate Care -->
+                                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl">
+                                        <h4 class="text-sm font-bold text-red-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                            Immediate Care
+                                        </h4>
+                                        <ul id="immediate-care-list" class="space-y-2"></ul>
+                                    </div>
+
+                                    <!-- Medications -->
+                                    <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-xl">
+                                        <h4 class="text-sm font-bold text-blue-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="pill" class="w-4 h-4"></i>
+                                            Medications
+                                        </h4>
+                                        <ul id="medications-list" class="space-y-2"></ul>
+                                    </div>
+
+                                    <!-- Treatment -->
+                                    <div class="bg-purple-50 border-l-4 border-purple-500 p-6 rounded-r-xl">
+                                        <h4 class="text-sm font-bold text-purple-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                                            Treatment Plan
+                                        </h4>
+                                        <ul id="treatment-list" class="space-y-2"></ul>
+                                    </div>
+
+                                    <!-- Precautions -->
+                                    <div class="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-r-xl">
+                                        <h4 class="text-sm font-bold text-amber-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                            Precautions & Warnings
+                                        </h4>
+                                        <ul id="precautions-list" class="space-y-2"></ul>
+                                    </div>
+
+                                    <!-- Recovery -->
+                                    <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-xl">
+                                        <h4 class="text-sm font-bold text-green-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="heart-pulse" class="w-4 h-4"></i>
+                                            Recovery Guidelines
+                                        </h4>
+                                        <ul id="recovery-list" class="space-y-2"></ul>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Details Tab -->
+                            <div id="details-tab" class="tab-pane hidden">
+                                <div class="bg-slate-50 rounded-2xl p-6 space-y-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Fracture Type:</span>
+                                            <p id="fracture-type" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Severity:</span>
+                                            <p id="severity" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Healing Time:</span>
+                                            <p id="healing-time" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Fractures Found:</span>
+                                            <p id="num-fractures" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Analysis Time:</span>
+                                            <p id="analysis-time" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-sm font-medium">Platform:</span>
+                                            <p id="platform" class="font-bold text-slate-900 text-lg"></p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pt-4 border-t border-slate-200">
+                                        <span class="text-slate-500 text-sm font-medium">Description:</span>
+                                        <p id="description" class="text-slate-700 mt-2 leading-relaxed"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-4 mt-8">
+                            <button onclick="location.reload()" class="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">
+                                Analyze Another
+                            </button>
+                            <button onclick="downloadReport()" class="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                                Download Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-12 border-t border-slate-100 bg-white w-full">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p class="text-slate-400 text-sm">© 2025 FractureVision AI. For clinical use by certified professionals.</p>
+            <div class="flex gap-8 text-sm font-bold text-slate-600">
+                <a href="#" class="hover:text-blue-600">Privacy</a>
+                <a href="#" class="hover:text-blue-600">Terms</a>
+                <a href="#" class="hover:text-blue-600">Contact Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+       // const API_URL = 'https://unstreaked-gavin-overmuch.ngrok-free.dev';
+        const API_URL = 'https://www.kaggle.com/predict';
+        
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const fileNameLabel = document.getElementById('file-name');
+        const fileSizeLabel = document.getElementById('file-size');
+        const removeBtn = document.getElementById('remove-btn');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const loadingState = document.getElementById('loading-state');
+        const resultDisplay = document.getElementById('result-display');
+        const systemStatus = document.getElementById('system-status');
+
+        let currentFile = null;
+        let analysisStartTime = null;
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+            
+            event.target.closest('.tab-button').classList.add('active');
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // Health check
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'online' && data.model_loaded) {
+                    systemStatus.innerHTML = `
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
+                        <span class="text-emerald-500 text-xs font-bold">Online</span>
+                    `;
+                }
+            } catch (error) {
+                systemStatus.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span class="text-red-500 text-xs font-bold">Offline</span>
+                `;
+            }
+        }
+        checkAPIHealth();
+        setInterval(checkAPIHealth, 30000);
+
+        // Drag & drop
+        ['dragenter', 'dragover'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drop-zone-active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drop-zone-active');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    currentFile = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        fileNameLabel.textContent = file.name;
+                        fileSizeLabel.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
+                        uploadPrompt.classList.add('hidden');
+                        previewContainer.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.value = "";
+            currentFile = null;
+            uploadPrompt.classList.remove('hidden');
+            previewContainer.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+        });
+
+        // Analyze
+        analyzeBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            analysisStartTime = Date.now();
+            resultsContainer.classList.remove('hidden');
+            loadingState.classList.remove('hidden');
+            resultDisplay.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('image', currentFile);
+
+            try {
+                const response = await fetch(`${API_URL}/api/predict`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                    resultsContainer.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to connect to server');
+                resultsContainer.classList.add('hidden');
+            }
+        });
+
+        // Display results
+        function displayResults(data) {
+            const analysisTime = ((Date.now() - analysisStartTime) / 1000).toFixed(2);
+            
+            loadingState.classList.add('hidden');
+            resultDisplay.classList.remove('hidden');
+
+            // Verdict card
+            if (data.verdict === "Fracture Detected") {
+                document.getElementById('verdict-card').className = 'p-6 rounded-2xl mb-6 bg-gradient-to-br from-red-500 to-red-600';
+                document.getElementById('verdict-text').textContent = "⚠️ Fracture Detected";
+                document.getElementById('verdict-subtitle').textContent = "Immediate medical attention recommended";
+                document.getElementById('confidence-badge').textContent = `${data.confidence}% Confidence`;
+                document.getElementById('fracture-type-name').textContent = data.fracture_name || '';
+            } else {
+                document.getElementById('verdict-card').className = 'p-6 rounded-2xl mb-6 bg-gradient-to-br from-emerald-500 to-emerald-600';
+                document.getElementById('verdict-text').textContent = "✓ No Fracture Detected";
+                document.getElementById('verdict-subtitle').textContent = "Analysis complete";
+                document.getElementById('confidence-badge').textContent = "Clear";
+                document.getElementById('fracture-type-name').textContent = '';
+            }
+
+            // Images
+            document.getElementById('annotated-image').src = data.annotated_image || '';
+            document.getElementById('gradcam-image').src = data.gradcam_image || data.annotated_image;
+
+            // Details
+            document.getElementById('fracture-type').textContent = data.fracture_name || 'N/A';
+            document.getElementById('severity').textContent = data.severity || 'N/A';
+            document.getElementById('healing-time').textContent = data.healing_time || 'N/A';
+            document.getElementById('num-fractures').textContent = data.num_fractures || 0;
+            document.getElementById('analysis-time').textContent = analysisTime + 's';
+            document.getElementById('platform').textContent = data.platform || 'Unknown';
+            document.getElementById('description').textContent = data.description || '';
+
+            // Medical lists
+            populateList('immediate-care-list', data.immediate_care);
+            populateList('medications-list', data.medications);
+            populateList('treatment-list', data.treatment);
+            populateList('precautions-list', data.precautions);
+            populateList('recovery-list', data.recovery);
+
+            window.currentResults = data;
+            window.currentAnalysisTime = analysisTime;
+
+            lucide.createIcons();
+        }
+
+        function populateList(elementId, items) {
+            const list = document.getElementById(elementId);
+            list.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'text-sm text-slate-700 flex items-start gap-2';
+                    li.innerHTML = `<span class="text-blue-500 mt-1">•</span><span>${item}</span>`;
+                    list.appendChild(li);
+                });
+            } else {
+                list.innerHTML = '<li class="text-sm text-slate-400">No information available</li>';
+            }
+        }
+
+        // Download report
+        function downloadReport() {
+            if (!window.currentResults) return;
+
+            const data = window.currentResults;
+            const reportText = `
+FractureVision AI - Enhanced Analysis Report
+====================================
+
+DIAGNOSIS
+---------
+Verdict: ${data.verdict}
+Fracture Type: ${data.fracture_name || 'N/A'}
+Severity: ${data.severity || 'N/A'}
+Confidence: ${data.confidence}%
+Healing Time: ${data.healing_time || 'N/A'}
+
+DETECTION DETAILS
+-----------------
+Fractures Found: ${data.num_fractures}
+Analysis Time: ${window.currentAnalysisTime}s
+Platform: ${data.platform || 'Unknown'}
+Model: YOLOv8s
+Timestamp: ${new Date(data.timestamp).toLocaleString()}
+
+${data.immediate_care ? `
+IMMEDIATE CARE
+--------------
+${data.immediate_care.map((item, i) => `${i+1}. ${item}`).join('\n')}
+` : ''}
+
+${data.medications ? `
+MEDICATIONS
+-----------
+${data.medications.map((item, i) => `${i+1}. ${item}`).join('\n')}
+` : ''}
+
+${data.treatment ? `
+TREATMENT PLAN
+--------------
+${data.treatment.map((item, i) => `${i+1}. ${item}`).join('\n')}
+` : ''}
+
+${data.precautions ? `
+PRECAUTIONS
+-----------
+${data.precautions.map((item, i) => `${i+1}. ${item}`).join('\n')}
+` : ''}
+
+${data.recovery ? `
+RECOVERY GUIDELINES
+-------------------
+${data.recovery.map((item, i) => `${i+1}. ${item}`).join('\n')}
+` : ''}
+
+====================================
+© 2025 FractureVision AI
+For clinical use by certified professionals.
+            `.trim();
+
+            const blob = new Blob([reportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fracture_report_${new Date().getTime()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
